@@ -1,0 +1,13 @@
+{
+  "name": "timezone-api-server",
+  "version": "1.0.0",
+  "description": "HTTP server with timezone API endpoint",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test-api.js"
+  },
+  "author": "",
+  "license": "MIT"
+}

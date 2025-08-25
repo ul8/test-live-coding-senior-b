@@ -2,12 +2,21 @@
   "name": "timezone-api-server",
   "version": "1.0.0",
   "description": "HTTP server with timezone API endpoint",
-  "main": "server.js",
+  "main": "dist/server.js",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "test": "node test-api.js"
+    "build": "tsc",
+    "start": "npm run build && node dist/server.js",
+    "dev": "npm run build && node dist/server.js",
+    "test": "npm run build && node dist/test-api.js"
   },
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "reflect-metadata": "^0.1.13"
+  }
 }

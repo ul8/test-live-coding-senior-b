@@ -12,11 +12,13 @@
   },
   "author": "",
   "license": "MIT",
+  "dependencies": {
+    "reflect-metadata": "^0.1.13",
+    "ws": "^8.14.2"
+  },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "@types/ws": "^8.5.8",
     "typescript": "^5.0.0"
-  },
-  "dependencies": {
-    "reflect-metadata": "^0.1.13"
   }
 }

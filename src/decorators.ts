@@ -39,7 +39,14 @@ interface ParamDefinition {
 }
 
 const routesMap = new Map<any, RouteDefinition[]>();
+const webSocketsMap = new Map<any, WebSocketDefinition>();
 const paramsMap = new Map<string, ParamDefinition[]>();
+const constructorParamsMap = new Map<string, ParamDefinition[]>();
+
+interface WebSocketDefinition {
+  path: string;
+  className: string;
+}
 
 export function Controller(): ClassDecorator {
   return (target: any) => {
@@ -83,16 +90,31 @@ export function Post(path: string): MethodDecorator {
 
 export function Param(paramName: string): ParameterDecorator {
   return (target: any, propertyKey: string | symbol | undefined, parameterIndex: number) => {
-    const key = `${target.constructor.name}.${String(propertyKey)}`;
-    if (!paramsMap.has(key)) {
-      paramsMap.set(key, []);
+    if (propertyKey) {
+      // Method parameter
+      const key = `${target.constructor.name}.${String(propertyKey)}`;
+      if (!paramsMap.has(key)) {
+        paramsMap.set(key, []);
+      }
+      const params = paramsMap.get(key)!;
+      params.push({
+        index: parameterIndex,
+        type: 'param',
+        name: paramName
+      });
+    } else {
+      // Constructor parameter
+      const key = target.name;
+      if (!constructorParamsMap.has(key)) {
+        constructorParamsMap.set(key, []);
+      }
+      const params = constructorParamsMap.get(key)!;
+      params.push({
+        index: parameterIndex,
+        type: 'param',
+        name: paramName
+      });
     }
-    const params = paramsMap.get(key)!;
-    params.push({
-      index: parameterIndex,
-      type: 'param',
-      name: paramName
-    });
   };
 }
 
@@ -170,6 +192,69 @@ export function registerService(serviceClass: any, instance: any) {
 
 export function getService(serviceClass: any): any {
   return servicesMap.get(serviceClass);
+}
+
+export function WebSocket(path: string): ClassDecorator {
+  return (target: any) => {
+    webSocketsMap.set(target, {
+      path,
+      className: target.name
+    });
+    
+    // Enable constructor parameter injection for WebSocket classes
+    enableConstructorInjection(target);
+  };
+}
+
+function enableConstructorInjection(target: any) {
+  const paramTypes = Reflect.getMetadata('design:paramtypes', target) || [];
+  const key = target.name;
+  
+  if (!constructorParamsMap.has(key)) {
+    constructorParamsMap.set(key, []);
+  }
+  
+  const params = constructorParamsMap.get(key)!;
+  
+  paramTypes.forEach((paramType: any, index: number) => {
+    // Skip if already has a decorator (like @Param)
+    const alreadyDecorated = params.some(p => p.index === index);
+    if (!alreadyDecorated && paramType && paramType.name && paramType.name.endsWith('Service')) {
+      params.push({
+        index,
+        type: 'service',
+        serviceClass: paramType
+      });
+    }
+  });
+}
+
+export function getWebSockets() {
+  return webSocketsMap;
+}
+
+export function getConstructorParams() {
+  return constructorParamsMap;
+}
+
+export interface WebSocketMatch {
+  webSocketClass: any;
+  path: string;
+  params: Record<string, string>;
+}
+
+export function matchWebSocket(path: string): WebSocketMatch | null {
+  for (const [webSocketClass, wsInfo] of webSocketsMap) {
+    const params = parsePathParams(wsInfo.path, path);
+    if (params !== null) {
+      return {
+        webSocketClass,
+        path: wsInfo.path,
+        params
+      };
+    }
+  }
+  return null;
 }
 
 export function matchRoute(method: string, path: string): RouteMatch | null {

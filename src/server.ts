@@ -1,13 +1,19 @@
 import 'reflect-metadata';
 import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { URL } from 'url';
-import { matchRoute, getRoutes, getParams } from './decorators.js';
+import { matchRoute, getRoutes, getParams, registerService, getService } from './decorators.js';
+
+// Import services
+import { TimezoneService } from './services/TimezoneService.js';
 
 // Import controllers - this automatically registers them via decorators
 import TimezoneController from './controllers/TimezoneController.js';
 import HealthcheckController from './controllers/HealthcheckController.js';
 
 const PORT = 3000;
+
+// Register services
+registerService(TimezoneService, new TimezoneService());
 
 // Create instances of controllers
 const controllers = new Map<any, any>();
@@ -27,6 +33,8 @@ function extractParams(
   metadata.forEach((paramInfo) => {
     if (paramInfo.type === 'param' && paramInfo.name) {
       args[paramInfo.index] = routeParams[paramInfo.name];
+    } else if (paramInfo.type === 'service' && paramInfo.serviceClass) {
+      args[paramInfo.index] = getService(paramInfo.serviceClass);
     }
   });
   

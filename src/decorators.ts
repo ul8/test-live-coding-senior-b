@@ -1,5 +1,30 @@
 import 'reflect-metadata';
 
+// Enable getting parameter types at runtime
+export function enableServiceInjection(target: any, propertyKey: string | symbol, descriptor: PropertyDescriptor) {
+  const paramTypes = Reflect.getMetadata('design:paramtypes', target, propertyKey) || [];
+  const key = `${target.constructor.name}.${String(propertyKey)}`;
+  
+  if (!paramsMap.has(key)) {
+    paramsMap.set(key, []);
+  }
+  
+  const existingParams = paramsMap.get(key)!;
+  
+  // Check each parameter type and mark services for injection
+  paramTypes.forEach((paramType: any, index: number) => {
+    // Skip if already has a decorator (like @Param)
+    const alreadyDecorated = existingParams.some(p => p.index === index);
+    if (!alreadyDecorated && paramType && paramType.name && paramType.name.endsWith('Service')) {
+      existingParams.push({
+        index,
+        type: 'service',
+        serviceClass: paramType
+      });
+    }
+  });
+}
+
 interface RouteDefinition {
   method: string;
   path: string;
@@ -8,8 +33,9 @@ interface RouteDefinition {
 
 interface ParamDefinition {
   index: number;
-  type: 'param';
-  name: string;
+  type: 'param' | 'service';
+  name?: string;
+  serviceClass?: any;
 }
 
 const routesMap = new Map<any, RouteDefinition[]>();
@@ -32,6 +58,9 @@ export function Get(path: string): MethodDecorator {
       path,
       methodName: propertyKey as string
     });
+    
+    // Enable automatic service injection
+    enableServiceInjection(target, propertyKey, descriptor);
   };
 }
 
@@ -46,6 +75,9 @@ export function Post(path: string): MethodDecorator {
       path,
       methodName: propertyKey as string
     });
+    
+    // Enable automatic service injection
+    enableServiceInjection(target, propertyKey, descriptor);
   };
 }
 
@@ -121,6 +153,23 @@ export interface RouteMatch {
   method: string;
   handler: string;
   params: Record<string, string>;
+}
+
+// Service registry
+const servicesMap = new Map<any, any>();
+
+export function Service(): ClassDecorator {
+  return (target: any) => {
+    // Services are registered when instantiated
+  };
+}
+
+export function registerService(serviceClass: any, instance: any) {
+  servicesMap.set(serviceClass, instance);
+}
+
+export function getService(serviceClass: any): any {
+  return servicesMap.get(serviceClass);
 }
 
 export function matchRoute(method: string, path: string): RouteMatch | null {
